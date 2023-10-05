@@ -1,0 +1,19 @@
+{
+  "name": "rescript-test-project",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "res:build": "rescript build -with-deps",
+    "res:clean": "rescript clean",
+    "res:dev": "rescript build -w",
+    "res:run": "rescript && node lib/js/src/Main.bs.js"
+  },
+  "dependencies": {
+    "@rescript/core": "*",
+    "rescript": "*",
+    "rescript-json": "^1.0.6"
+  },
+  "devDependencies": {
+    "bs-platform": "^9.0.2"
+  }
+}
