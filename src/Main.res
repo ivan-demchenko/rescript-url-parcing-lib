@@ -30,14 +30,36 @@ let parse = (input: list<string>): list<component> => {
   parse'(input, Protocol, list{})
 }
 
+type result = {
+  protocol: Js.Array.t<string>,
+  domain: Js.Array.t<string>,
+  path: Js.Array.t<string>,
+  query: Js.Array.t<Js.Array.t<string>>,
+  variables: Js.Array.t<string>,
+}
+
+let emptyResult: result = {
+  protocol: [],
+  domain: [],
+  path: [],
+  query: [],
+  variables: [],
+}
+
 let run = input => {
   input
   ->Js.String2.split("")
   ->Belt.List.fromArray
   ->parse
-  ->Belt.List.map(componentToStr)
-  ->Belt.List.toArray
-  ->Js.Array2.joinWith(", ")
+  ->Belt.List.reduce(emptyResult, (res, comp) => {
+    switch comp {
+    | Protocol(x) => {...res, protocol: [x]}
+    | Domain(x) => {...res, domain: [x]}
+    | Path(xs) => {...res, path: Belt.List.toArray(xs)}
+    | Query(xs) => {...res, query: xs->Belt.List.map(pairToArr)->Belt.List.toArray}
+    | Variable(x) => {...res, variables: Js.Array.concat(res.variables, [x])}
+    }
+  })
 }
 
 Js.Console.log2("1:\n", run("https://domain.com/api/test"))

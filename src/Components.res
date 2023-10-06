@@ -4,6 +4,8 @@ let joinList = (xs: list<string>, del: string): string => {
 
 type queryParams = list<(string, string)>
 
+let pairToArr = ((k, v): (string, string)) => [k, v]
+
 type component =
   | Protocol(string)
   | Domain(string)
