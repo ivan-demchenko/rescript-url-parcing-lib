@@ -2,18 +2,18 @@ let joinList = (xs: list<string>, del: string): string => {
   xs->Belt.List.toArray->Js.Array2.joinWith(del)
 }
 
-type queryParams = list<(string, string)>
+type queryParam = (string, string)
 
-let pairToArr = ((k, v): (string, string)) => [k, v]
+let pairToArr = ((k, v): queryParam) => [k, v]
 
 type component =
   | Protocol(string)
   | Domain(string)
   | Path(list<string>)
-  | Query(queryParams)
+  | Query(list<queryParam>)
   | Variable(string)
 
-let queryParamsToStr = (xs: queryParams): string => {
+let queryParamsToStr = (xs: list<queryParam>): string => {
   xs->Belt.List.toArray->Js.Array2.map(((k, v)) => `${k}=${v}`)->Js.Array2.joinWith(", ")
 }
 

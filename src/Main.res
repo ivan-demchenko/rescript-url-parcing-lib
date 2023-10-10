@@ -19,8 +19,8 @@ let rec parse' = (input: list<string>, mode: mode, res: list<component>): list<c
       parse'(rest, Query, list{...comps, ...res, ...vars})
     }
   | Query => {
-      let (maybeComp, rest) = QueryString.parse(input)
-      rest->parse'(End, maybeComp->compToList->Belt.List.concat(res))
+      let ((comps, vars), rest) = QueryString.parse(input)
+      parse'(rest, End, list{...comps, ...res, ...vars})
     }
   | End => res
   }
@@ -62,6 +62,10 @@ let run = input => {
   })
 }
 
-Js.Console.log2("1:\n", run("https://domain.com/api/test"))
-Js.Console.log2("2:\n", run("https://{{baseUrl}}.com/api/{{apiVer}}/test?age=24&bob=john"))
-Js.Console.log2("3:\n", run("{{baseUrl}}"))
+Js.Console.log2("----\n", run("https://domain.com/api/test"))
+Js.Console.log2("----\n", run("https://{{baseUrl}}.com/api/{{apiVer}}/test?age=24&bob=john"))
+Js.Console.log2(
+  "----\n",
+  run("https://{{baseUrl}}.com/api/{{apiVer}}/test?age={{age}}&{{nameKey}}={{nameVal}}"),
+)
+Js.Console.log2("----\n", run("{{baseUrl}}"))
