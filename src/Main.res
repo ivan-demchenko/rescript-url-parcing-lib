@@ -1,22 +1,26 @@
-open Parsers
-open Components
+open ComponentParsers
+open Component
 
+@genType
 let parser = Parser.parallel(list{
   allVarsStr,
   list{parseProtocol, parseDomain, parsePath, queryString}->Parser.tryAll,
   parseHash,
 })
 
-type resultRec = {
+// Library interface
+
+@genType
+type urlRecord = {
   protocol: option<string>,
   domain: option<array<string>>,
-  path: option<string>,
-  query: option<array<string>>,
+  path: option<array<string>>,
+  query: option<array<array<string>>>,
   hash: option<string>,
   variables: option<array<string>>,
 }
 
-let initial: resultRec = {
+let initial: urlRecord = {
   protocol: None,
   domain: None,
   path: None,
@@ -25,13 +29,16 @@ let initial: resultRec = {
   variables: None,
 }
 
-let toResults = (xs: list<component>): resultRec =>
+let toResults = (xs: list<component>): urlRecord =>
   xs->List.reduce(initial, (acc, cmp) => {
     switch cmp {
     | Protocol(x) => {...acc, protocol: Some(x)}
     | Domain(xs) => {...acc, domain: Some(xs->List.toArray)}
-    | Path(x) => {...acc, path: Some(x)}
-    | Query(xs) => {...acc, query: Some(xs->List.toArray)}
+    | Path(xs) => {
+        ...acc,
+        path: Some(xs->List.toArray),
+      }
+    | Query(xs) => {...acc, query: Some(xs->List.map(p => p->List.toArray)->List.toArray)}
     | Hash(x) => {...acc, hash: Some(x)}
     | Variable(x) => {
         ...acc,
@@ -40,7 +47,11 @@ let toResults = (xs: list<component>): resultRec =>
     }
   })
 
-let input = "{{prot}}://{{v1}}.google.{{v2}}.com/api/{{api-version}}"
+// Run some tests
+
+let input = "{{prot}}://{{v1}}.google.{{v2}}.com/api/{{api-version}}?a=1&b=2#my-hash"
+
+let d1 = Date.now()
 
 let parsingRes =
   parser
@@ -50,4 +61,7 @@ let parsingRes =
   })
   ->Option.getWithDefault(initial)
 
+let parsingTime = Float.toString(Date.now() -. d1)
+
+Js.Console.log(`Parsing took ${parsingTime}ms`)
 Js.Console.log(parsingRes)

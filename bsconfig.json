@@ -18,5 +18,14 @@
   ],
   "reanalyze": {
     "analysis": ["dce", "exception"]
+  },
+  "gentypeconfig": {
+    "language": "typescript",
+    "generatedFileExtension": ".gen.tsx",
+    "module": "es6",
+    "debug": {
+      "all": false,
+      "basic": false
+    }
   }
 }

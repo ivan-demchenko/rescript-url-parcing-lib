@@ -6,7 +6,9 @@
     "res:build": "rescript build -with-deps",
     "res:clean": "rescript clean",
     "res:dev": "rescript build -w",
-    "res:run": "rescript && node lib/js/src/Main.bs.js"
+    "res:run": "rescript && node lib/js/src/Main.bs.js",
+    "res:gentype": "gentype",
+    "res:analyze": ""
   },
   "dependencies": {
     "@rescript/core": "*",
@@ -14,6 +16,8 @@
     "rescript-json": "^1.0.6"
   },
   "devDependencies": {
-    "bs-platform": "^9.0.2"
+    "bs-platform": "^9.0.2",
+    "gentype": "^4.5.0",
+    "reanalyze": "^2.23.0"
   }
 }
