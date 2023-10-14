@@ -4,7 +4,7 @@ open Component
 @genType
 let parser = Parser.parallel(list{
   allVarsStr,
-  list{parseProtocol, parseDomain, parsePath, queryString}->Parser.tryAll,
+  list{parseProtocol, parseUserInfo, parseDomain, parsePort, parsePath, queryString}->Parser.tryAll,
   parseHash,
 })
 
@@ -13,7 +13,9 @@ let parser = Parser.parallel(list{
 @genType
 type urlRecord = {
   protocol: option<string>,
+  userInfo: option<string>,
   domain: option<array<string>>,
+  port: option<string>,
   path: option<array<string>>,
   query: option<array<array<string>>>,
   hash: option<string>,
@@ -22,7 +24,9 @@ type urlRecord = {
 
 let initial: urlRecord = {
   protocol: None,
+  userInfo: None,
   domain: None,
+  port: None,
   path: None,
   query: None,
   hash: None,
@@ -33,7 +37,9 @@ let toResults = (xs: list<component>): urlRecord =>
   xs->List.reduce(initial, (acc, cmp) => {
     switch cmp {
     | Protocol(x) => {...acc, protocol: Some(x)}
+    | UserInfo(x) => {...acc, userInfo: Some(x)}
     | Domain(xs) => {...acc, domain: Some(xs->List.toArray)}
+    | Port(x) => {...acc, port: Some(x)}
     | Path(xs) => {
         ...acc,
         path: Some(xs->List.toArray),
@@ -49,19 +55,32 @@ let toResults = (xs: list<component>): urlRecord =>
 
 // Run some tests
 
-let input = "{{prot}}://{{v1}}.google.{{v2}}.com/api/{{api-version}}?a=1&b=2#my-hash"
+let inputs = list{
+  "localhost",
+  "localhost:8080",
+  "http://localhost:8080",
+  "http://localhost:8080#test-hash",
+  "http://test.com/api/v1",
+  "http://test.com/api/v1/",
+  "http://test.com/api/v1?a=1",
+  "http://test.com/api/v1/?a=1",
+  "http://test.com/api/{{api-version}}?a=1&b=2#my-hash",
+}
 
 let d1 = Date.now()
 
-let parsingRes =
-  parser
-  ->Parser.runParser(input)
-  ->Option.map(((_, xs)) => {
-    xs->List.flatten->toResults
-  })
-  ->Option.getWithDefault(initial)
+inputs->List.forEach(input => {
+  Js.Console.log(`Parsing: ${input}`)
+  Js.Console.log(
+    parser
+    ->Parser.runParser(input)
+    ->Option.map(((_, xs)) => {
+      xs->List.flatten->toResults
+    })
+    ->Option.getWithDefault(initial),
+  )
+})
 
 let parsingTime = Float.toString(Date.now() -. d1)
 
-Js.Console.log(`Parsing took ${parsingTime}ms`)
-Js.Console.log(parsingRes)
+Js.Console.log(`Parsing everything took ${parsingTime}ms`)
