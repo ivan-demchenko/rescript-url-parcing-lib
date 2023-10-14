@@ -1,71 +1,53 @@
+open Parsers
 open Components
 
-type mode = Protocol | Domain | Path | Query | End
+let parser = Parser.parallel(list{
+  allVarsStr,
+  list{parseProtocol, parseDomain, parsePath, queryString}->Parser.tryAll,
+  parseHash,
+})
 
-let compToList = maybeComp => maybeComp->Option.map(x => list{x})->Option.getWithDefault(list{})
-
-let rec parse' = (input: list<string>, mode: mode, res: list<component>): list<component> => {
-  switch mode {
-  | Protocol => {
-      let ((comps, vars), rest) = Protocol.parse(input)
-      parse'(rest, Domain, list{...comps, ...res, ...vars})
-    }
-  | Domain => {
-      let ((comps, vars), rest) = Domain.parse(input)
-      parse'(rest, Path, list{...comps, ...res, ...vars})
-    }
-  | Path => {
-      let ((comps, vars), rest) = Path.parse(input, "", list{}, list{})
-      parse'(rest, Query, list{...comps, ...res, ...vars})
-    }
-  | Query => {
-      let ((comps, vars), rest) = QueryString.parse(input)
-      parse'(rest, End, list{...comps, ...res, ...vars})
-    }
-  | End => res
-  }
+type resultRec = {
+  protocol: option<string>,
+  domain: option<array<string>>,
+  path: option<string>,
+  query: option<array<string>>,
+  hash: option<string>,
+  variables: option<array<string>>,
 }
 
-let parse = (input: list<string>): list<component> => {
-  parse'(input, Protocol, list{})
+let initial: resultRec = {
+  protocol: None,
+  domain: None,
+  path: None,
+  query: None,
+  hash: None,
+  variables: None,
 }
 
-type result = {
-  protocol: Js.Array.t<string>,
-  domain: Js.Array.t<string>,
-  path: Js.Array.t<string>,
-  query: Js.Array.t<Js.Array.t<string>>,
-  variables: Js.Array.t<string>,
-}
-
-let emptyResult: result = {
-  protocol: [],
-  domain: [],
-  path: [],
-  query: [],
-  variables: [],
-}
-
-let run = input => {
-  input
-  ->Js.String2.split("")
-  ->Belt.List.fromArray
-  ->parse
-  ->Belt.List.reduce(emptyResult, (res, comp) => {
-    switch comp {
-    | Protocol(x) => {...res, protocol: [x]}
-    | Domain(x) => {...res, domain: [x]}
-    | Path(xs) => {...res, path: Belt.List.toArray(xs)}
-    | Query(xs) => {...res, query: xs->Belt.List.map(pairToArr)->Belt.List.toArray}
-    | Variable(x) => {...res, variables: Js.Array.concat(res.variables, [x])}
+let toResults = (xs: list<component>): resultRec =>
+  xs->List.reduce(initial, (acc, cmp) => {
+    switch cmp {
+    | Protocol(x) => {...acc, protocol: Some(x)}
+    | Domain(xs) => {...acc, domain: Some(xs->List.toArray)}
+    | Path(x) => {...acc, path: Some(x)}
+    | Query(xs) => {...acc, query: Some(xs->List.toArray)}
+    | Hash(x) => {...acc, hash: Some(x)}
+    | Variable(x) => {
+        ...acc,
+        variables: acc.variables->Option.map(xs => Array.concat(xs, [x]))->Option.orElse(Some([x])),
+      }
     }
   })
-}
 
-Js.Console.log2("----\n", run("https://domain.com/api/test"))
-Js.Console.log2("----\n", run("https://{{baseUrl}}.com/api/{{apiVer}}/test?age=24&bob=john"))
-Js.Console.log2(
-  "----\n",
-  run("https://{{baseUrl}}.com/api/{{apiVer}}/test?age={{age}}&{{nameKey}}={{nameVal}}"),
-)
-Js.Console.log2("----\n", run("{{baseUrl}}"))
+let input = "{{prot}}://{{v1}}.google.{{v2}}.com/api/{{api-version}}"
+
+let parsingRes =
+  parser
+  ->Parser.runParser(input)
+  ->Option.map(((_, xs)) => {
+    xs->List.flatten->toResults
+  })
+  ->Option.getWithDefault(initial)
+
+Js.Console.log(parsingRes)
