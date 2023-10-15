@@ -6,16 +6,16 @@ let runParser = (Parser(parser), inp) => parser(inp)
 
 // Functor
 @genType
-let map: (t<'a>, 'a => 'b) => t<'b> = (p, f) => Parser(
-  s => runParser(p, s)->Option.map(((s', a)) => (s', f(a))),
+let map: (t<'a>, 'a => 'b) => t<'b> = (Parser(p), f) => Parser(
+  s => p(s)->Option.map(((s', a)) => (s', f(a))),
 )
 
 @genType
 let subParse: (t<'a>, t<'b>) => t<'b> = (Parser(pa), Parser(pb)) => Parser(
-  s => pa(s)->Option.flatMap(((s', a)) => pb(a)->Option.map(((_, b)) => (s', b))),
+  s => pa(s)->Option.flatMap(((_, a)) => pb(a)->Option.map(((s'', b)) => (s'', b))),
 )
 
-// Alternative
+// Alternative: Try this parser and if it fails, try a different one
 @genType
 let alt: (t<'a>, t<'a>) => t<'a> = (Parser(p1), Parser(p2)) => Parser(
   s => p1(s)->Option.orElse(p2(s)),
@@ -25,7 +25,7 @@ let alt: (t<'a>, t<'a>) => t<'a> = (Parser(p1), Parser(p2)) => Parser(
 let from: (string => option<(string, 'a)>) => t<'a> = f => Parser(f)
 
 @genType
-let takeRest = Parser(s => Some("", s))
+let takeAll = Parser(s => Some("", s))
 
 // Utils
 @genType
@@ -35,10 +35,7 @@ let collect: t<'a> => t<list<'a>> = (Parser(parser)) => Parser(
       switch parser(s') {
       | None => (s', acc)
       | Some((s'', a)) =>
-        switch String.length(s'') {
-        | 0 => (s', list{...acc, a})
-        | _ => run(s'', list{...acc, a})
-        }
+        String.length(s'') == 0 ? (s', list{...acc, a}) : run(s'', list{...acc, a})
       }
     }
     Some(run(s, list{}))
@@ -81,10 +78,14 @@ let tryAll: list<t<'a>> => t<list<'a>> = ps => Parser(
 @genType
 let takeUntil = (em: string): t<string> => {
   from(input =>
-    String.indexOfOpt(input, em)->Option.map(ei => (
-      String.substringToEnd(input, ~start=ei + String.length(em)),
+    String.indexOfOpt(input, em)
+    ->Option.map(ei => (
+      String.substringToEnd(input, ~start=ei),
       String.substring(input, ~start=0, ~end=ei),
     ))
+    ->Option.flatMap(((rest, val)) => {
+      String.length(val) === 0 ? None : Some((rest, val))
+    })
   )
 }
 

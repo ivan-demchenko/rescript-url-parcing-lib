@@ -6,8 +6,7 @@
     "res:build": "rescript build -with-deps",
     "res:clean": "rescript clean",
     "res:dev": "rescript build -w",
-    "res:run": "rescript && node lib/js/src/Main.bs.js",
-    "res:gentype": "gentype",
+    "res:demo": "rescript && node src/Demo.bs.js",
     "res:analyze": ""
   },
   "dependencies": {

@@ -1,58 +1,61 @@
 open Parser
 open Component
 
+let nonEmptyStr = s => String.length(s) > 0
+
 @genType
 let allVarsStr =
-  takeBetween("{{", "}}")->Parser.map(x => x->Variable)->Parser.collect
+  takeBetween("{{", "}}")->map(x => x->Variable)->collect
 
 @genType
-let parseProtocol = takeUntil("://")->Parser.map(x => x->Protocol)
+let parseProtocol = takeUntil("://")->map(x => x->Protocol)
 
 @genType
-let parseUserInfo = takeUntil("@")->Parser.map(x => x->UserInfo)
+let parseUserInfo =
+  takeFrom("://")
+  ->alt(takeAll)
+  ->subParse(takeUntil("@"))
+  ->map(s => {
+    switch String.split(s, ":") {
+    | [user, pwd] => UserInfo(user, pwd)
+    | _ => UserInfo(s, "")
+    }
+  })
 
 @genType
 let parseDomain =
-  takeUntil(":")
-  ->Parser.alt(takeUntil("/"))
-  ->Parser.alt(takeUntil("#"))
-  ->Parser.alt(Parser.takeRest)
-  ->Parser.subParse(
-    takeUntil(".")->Parser.alt(takeUntil("/"))->Parser.alt(Parser.takeRest)->Parser.collect,
-  )
-  ->Parser.map(xs => xs->Domain)
+  takeFrom("://")
+  ->alt(takeFrom("@"))
+  ->alt(takeAll)
+  ->subParse(takeUntil(":")->alt(takeUntil("/"))->alt(takeUntil("#"))->alt(takeAll))
+  ->map(str => str->String.split(".")->Domain)
 
 let parsePort =
-  takeFrom(":")
-  ->Parser.subParse(
-    takeUntil("/")
-    ->Parser.alt(takeUntil("#")->Parser.map(s => s ++ "#"))
-    ->Parser.alt(Parser.takeRest),
-  )
-  ->Parser.map(x => x->Port)
+  takeFrom(":")->subParse(takeUntil("/")->alt(takeUntil("#"))->alt(takeAll))->map(x => x->Port)
 
 @genType
 let parsePath =
-  takeUntil("?")
-  ->Parser.alt(takeUntil("#"))
-  ->Parser.alt(Parser.takeRest)
-  ->Parser.subParse(
-    takeUntil("/")->Parser.alt(takeUntil("#"))->Parser.alt(Parser.takeRest)->Parser.collect,
-  )
-  ->Parser.map(x => x->Path)
+  takeFrom("/")
+  ->subParse(takeUntil("?")->alt(takeUntil("#"))->alt(takeAll))
+  ->map(str => str->String.split("/")->Array.filter(nonEmptyStr)->Path)
 
 @genType
-let parseHash = takeFrom("#")->Parser.map(x => list{Hash(x)})
+let parseHash = takeFrom("#")->Parser.map(x => Hash(x))
 
 @genType
-let queryString =
+let parseQueryString = takeFrom("?")->subParse(
   takeUntil("#")
-  ->Parser.alt(Parser.takeRest)
-  ->Parser.subParse(
-    takeUntil("&")
-    ->Parser.alt(takeUntil("#"))
-    ->Parser.alt(Parser.takeRest)
-    ->Parser.subParse(takeUntil("=")->Parser.alt(Parser.takeRest)->Parser.collect)
-    ->Parser.collect,
-  )
-  ->Parser.map(xs => xs->Query)
+  ->alt(takeAll)
+  ->Parser.map(str =>
+    str
+    ->String.split("&")
+    ->Array.filter(nonEmptyStr)
+    ->Array.reduce([], (acc, strPair) => {
+      switch strPair->String.split("=") {
+      | [k, v] => Array.concat(acc, [(k, v)])
+      | _ => acc
+      }
+    })
+    ->Query
+  ),
+)

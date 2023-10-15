@@ -1,10 +1,10 @@
 @genType
 type component =
   | Protocol(string)
-  | UserInfo(string)
-  | Domain(list<string>)
+  | UserInfo(string, string)
+  | Domain(array<string>)
   | Port(string)
-  | Path(list<string>)
-  | Query(list<list<string>>)
+  | Path(array<string>)
+  | Query(array<(string, string)>)
   | Hash(string)
   | Variable(string)
